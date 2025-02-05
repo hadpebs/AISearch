@@ -60,16 +60,17 @@
         }
 
         function submitDrawing() {
-            const imageData = canvas.toDataURL("image/png");
-            fetch("https://your-microservice-endpoint.com/upload", {
-                method: "POST",
-                body: JSON.stringify({ image: imageData }),
-                headers: { "Content-Type": "application/json" }
-            })
-            .then(response => response.json())
-            .then(data => alert("Drawing submitted successfully!"))
-            .catch(error => alert("Error submitting drawing: " + error));
-        }
+    fetch("http://localhost:5000", {  // URL to your microservice
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Display the response from the microservice (assuming it is a string or an object with a message)
+        alert("Drawing submitted successfully! Response from service: " + data.response);  // Modify this as per your response format
+    })
+    .catch(error => alert("Error submitting drawing: " + error));
+}
 
         canvas.addEventListener("mousedown", startDrawing);
         canvas.addEventListener("mouseup", stopDrawing);
