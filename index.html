@@ -92,20 +92,26 @@
         }
 
         function loadCapturedImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    document.getElementById('drawingContainer').classList.remove('hidden');
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Adjust the canvas size based on the image's natural dimensions
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Draw the image onto the canvas with its natural dimensions
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 
         async function uploadToDropbox() {
             const accessToken = ""; // Replace with your token
