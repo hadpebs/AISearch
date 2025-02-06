@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drawing Pad with Image Cropping</title>
+    <title>Drawing Pad</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
         .btn {
             background-color: #009999;
@@ -23,16 +21,20 @@
 </head>
 <body class="bg-gray-200 flex justify-center items-center min-h-screen p-4">
     <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Image Selection and Upload</h2>
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Drawing Pad</h2>
         
         <div class="flex justify-center gap-4 mb-4">
-            <button onclick="captureImage()" class="btn">Capture Image</button>
-            <button onclick="uploadToDropbox()" class="btn">Upload Cropped Image</button>
+            <button onclick="showDrawingPad()" class="btn">Draw Design</button>
+            <button onclick="captureImage()" class="btn">Capture Design</button>
         </div>
         
         <div id="drawingContainer" class="hidden">
             <div class="border-2 border-gray-700 rounded-lg overflow-hidden">
-                <canvas id="drawingPad" class="w-full h-auto"></canvas>
+                <canvas id="drawingPad" width="500" height="300" class="w-full h-auto"></canvas>
+            </div>
+            <div class="flex justify-center gap-4 mt-4">
+                <button onclick="clearCanvas()" class="btn">Clear</button>
+                <button onclick="uploadToDropbox()" class="btn">Upload</button>
             </div>
         </div>
 
@@ -42,77 +44,87 @@
     <script>
         const canvas = document.getElementById('drawingPad');
         const ctx = canvas.getContext('2d');
-        let imageToDraw;
-        let startX, startY, endX, endY;
-        let isSelecting = false;
+        let drawing = false;
 
-        canvas.addEventListener('mousedown', startSelection);
-        canvas.addEventListener('mousemove', drawSelection);
-        canvas.addEventListener('mouseup', endSelection);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
 
-        function startSelection(event) {
-            // Get the position of the mouse on the canvas
-            startX = event.offsetX;
-            startY = event.offsetY;
-            isSelecting = true;
+        function startDrawing(event) {
+            drawing = true;
+            draw(event);
         }
 
-        function drawSelection(event) {
-            if (!isSelecting) return;
-
-            endX = event.offsetX;
-            endY = event.offsetY;
-
-            // Redraw the canvas and the selection box
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(imageToDraw, 0, 0, canvas.width, canvas.height); // Redraw the image
+        function stopDrawing() {
+            drawing = false;
             ctx.beginPath();
-            ctx.rect(startX, startY, endX - startX, endY - startY); // Draw selection box
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = 'red';
-            ctx.setLineDash([6]);
-            ctx.stroke();
         }
 
-        function endSelection() {
-            isSelecting = false;
+        function draw(event) {
+    if (!drawing) return;
+    event.preventDefault();
 
-            // Ensure that the selection is within bounds
-            if (endX < startX) [startX, endX] = [endX, startX];
-            if (endY < startY) [startY, endY] = [endY, startY];
+    // Get the current canvas dimensions
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
-            // Crop the image to the selected area
-            const croppedImageData = ctx.getImageData(startX, startY, endX - startX, endY - startY);
-            canvas.width = endX - startX;
-            canvas.height = endY - startY;
-            ctx.putImageData(croppedImageData, 0, 0);
+    // Adjust the drawing coordinates to match the canvas size
+    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+    const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+
+    // Apply scaling to the coordinates based on the current canvas size
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'black';
+    ctx.lineTo(x * scaleX, y * scaleY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x * scaleX, y * scaleY);
+}
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        async function loadCapturedImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    // Set image to be drawn
-                    imageToDraw = img;
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    document.getElementById('drawingContainer').classList.remove('hidden');
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+        function showDrawingPad() {
+            document.getElementById('drawingContainer').classList.remove('hidden');
         }
+
+        function captureImage() {
+            document.getElementById('captureInput').click();
+        }
+
+        function loadCapturedImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Adjust the canvas size based on the image's natural dimensions
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Draw the image onto the canvas with its natural dimensions
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 
         async function uploadToDropbox() {
-            const accessToken = ""; // Replace with your Dropbox access token
+            const accessToken = ""; // Replace with your token
             const imageData = canvas.toDataURL('image/png');
             const blob = await (await fetch(imageData)).blob();
-            const fileName = `cropped_image_${Date.now()}.png`;
+            const fileName = `drawing_${Date.now()}.png`;
             const dropboxApiUrl = "https://content.dropboxapi.com/2/files/upload";
 
             const headers = {
@@ -140,10 +152,6 @@
                 }
             })
             .catch(error => console.error("Upload Error:", error));
-        }
-
-        function captureImage() {
-            document.getElementById('captureInput').click();
         }
     </script>
 </body>
