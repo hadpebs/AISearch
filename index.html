@@ -19,16 +19,26 @@
         }
     </style>
 </head>
-<body class="bg-gray-200 flex justify-center items-center h-screen">
-    <div class="bg-white shadow-xl rounded-xl p-8 w-[600px] text-center">
-        <h2 class="text-2xl font-semibold mb-6 text-gray-800">Drawing Pad</h2>
-        <div class="border-2 border-gray-700 rounded-lg overflow-hidden">
-            <canvas id="drawingPad" width="500" height="300" class="w-full"></canvas>
+<body class="bg-gray-200 flex justify-center items-center min-h-screen p-4">
+    <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Drawing Pad</h2>
+        
+        <div class="flex justify-center gap-4 mb-4">
+            <button onclick="showDrawingPad()" class="btn">Draw Design</button>
+            <button onclick="captureImage()" class="btn">Capture Design</button>
         </div>
-        <div class="flex justify-center gap-4 mt-6">
-            <button onclick="clearCanvas()" class="btn">Clear</button>
-            <button onclick="uploadToDropbox()" class="btn">Upload</button>
+        
+        <div id="drawingContainer" class="hidden">
+            <div class="border-2 border-gray-700 rounded-lg overflow-hidden">
+                <canvas id="drawingPad" width="500" height="300" class="w-full h-auto"></canvas>
+            </div>
+            <div class="flex justify-center gap-4 mt-4">
+                <button onclick="clearCanvas()" class="btn">Clear</button>
+                <button onclick="uploadToDropbox()" class="btn">Upload</button>
+            </div>
         </div>
+
+        <input type="file" id="captureInput" accept="image/*" capture="environment" class="hidden" onchange="loadCapturedImage(event)">
     </div>
 
     <script>
@@ -36,32 +46,69 @@
         const ctx = canvas.getContext('2d');
         let drawing = false;
 
-        canvas.addEventListener('mousedown', () => drawing = true);
-        canvas.addEventListener('mouseup', () => {
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
+
+        function startDrawing(event) {
+            drawing = true;
+            draw(event);
+        }
+
+        function stopDrawing() {
             drawing = false;
             ctx.beginPath();
-        });
-        canvas.addEventListener('mousemove', draw);
+        }
 
         function draw(event) {
             if (!drawing) return;
+            event.preventDefault();
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
             ctx.strokeStyle = 'black';
 
             const rect = canvas.getBoundingClientRect();
-            ctx.lineTo(event.clientX - rect.left, event.clientY - rect.top);
+            const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+            const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+            ctx.lineTo(x, y);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(event.clientX - rect.left, event.clientY - rect.top);
+            ctx.moveTo(x, y);
         }
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
+        function showDrawingPad() {
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        }
+
+        function captureImage() {
+            document.getElementById('captureInput').click();
+        }
+
+        function loadCapturedImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    document.getElementById('drawingContainer').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         async function uploadToDropbox() {
-            const accessToken = "sl.u.AFgH_Td1x0b2bHz-wkg-60X4aSHfIY-K0rdXF0rleA9_oQo9j_E7I3LfL8OruHiY8EOAaklxyAJsA9yV38Xbikp0C3nJSpVg2C-e8h2QrKONNghszvzOor6526SNMlDLnAqiErpiArDQ3OR82Y-dt9_ZyEFjoBJuS-JBeN_EGFDGMZLF7b-iv8WVolcwKQeHsHjI6S7X1vMczH5lvcXI90Ntf0rLfV6wTn3vcYjaGMWA2uY08yZCG-r8A8mQViyFWo0L2ATuP9S0YO9sg7e0O5DWqsgR5beN-jH6dXVGsWFtUnp2u15KTxWFcvrgonPhd7YY-yZfFHzNKfhMj5ZltYSbYSky5kSES9AXbz04fX3kih9HUKEPejynNWRP7rLo-9Gh5A9yiTJYiDBOrri6puIURKHiiF5WDNI0LsewcI47Cej_UNH2ccAA7Kbb_xumjIO0n8-8Xo2vA0XIZo6NXpE1B0bRphmJM7fyTNwfasBYaQgI_iyuaRC0MWm4eIlRZGlD8QtQ6vjWkEKlhx3h9ZkdIFUEJgVtTwV_hF1ftRPpz6XulgT27GM1j7pmewaAkVdj0XuZg-mLZloHP74tC-a4G2m2Pj6Dj4UXwRDmeoYxkpIKanHkjIMa7LZNM6sRTW_nP9KTME8dwd5sqHxw6aNXk1mwFWnylET2_qHby2d-lfNjrD23OtFghl3_3xXmdTEsGDA7KOoQM5PBRJ6tdZlLTPXKCjYWLItSHPYVYYqSDR6EkP7Lz4p9nS9kHAxmGKRWegxmyFkzTn3Rc5qmESNcfDgZUvSo-eoL51An9hbI3q73dOH9CjLEuEecj7i-O-d9l0mU8RT2tJGLmDe23sa-7PWW7GPf0opTdjdM4CnY2Eu5YdTGZ0Zj1OavwXq3sQjxbj8F65NkL0ycUbZA9dmkcURpvK0RfZgktpfajiJnSoMSWjllfk_MaN5ej0utQAgKijs-o_oGgUYEth_iAdbnOpO8vWyys_y_ZEiglh5QC5G2CUFKl6zs_PX64mVRfpRogNUfAP3ljU26r_GvbgZwvd1kILd4ct0St5SXJ1XZWDWIJqG9f_e8cR8NCp0KPSjOLFQ5sHTbu24yt4MlsVY8zuaOwqhutpBsojPjz6iF04-4FPsPcaNWYPmNarevsi4r0XvscMGid4LHte2NIQZ6vdMXIpa6xZoGR2682nBgKP-wO-n0pdEgieKeu2PORO_23DBHs13_YnxREFImtGr2Q2nURNMfKLCtcfhfEha07-0ekEJDvO3xHSEi8VdTSrXrf5Oo851PYsS6kSfATcqCB4QL6aWO1tqCR7rNHplLajEOKkeUclrn0gjBORxG_32r1AaFVXNjF2dE7f4Itiswd-KNtviVfzhjg37ei_72T-IFPpXkVHdA3xiJ7cpf4UkaSzi2A6nU-aihioW-ISCf"; // Replace with your token
+            const accessToken = ""; // Replace with your token
             const imageData = canvas.toDataURL('image/png');
             const blob = await (await fetch(imageData)).blob();
             const fileName = `drawing_${Date.now()}.png`;
