@@ -77,7 +77,7 @@
     const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
 
     // Apply scaling to the coordinates based on the current canvas size
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.strokeStyle = 'black';
     ctx.lineTo(x * scaleX, y * scaleY);
