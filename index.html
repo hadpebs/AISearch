@@ -17,6 +17,17 @@
         .btn:hover {
             background-color: #007777;
         }
+
+        /* Fullscreen canvas styles */
+        #drawingPad.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 999;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-gray-200 flex justify-center items-center min-h-screen p-4">
@@ -26,6 +37,7 @@
         <div class="flex justify-center gap-4 mb-4">
             <button onclick="showDrawingPad()" class="btn">Draw Design</button>
             <button onclick="captureImage()" class="btn">Capture Design</button>
+            <button onclick="toggleFullScreen()" class="btn">Full Screen</button>
         </div>
         
         <div id="drawingContainer" class="hidden">
@@ -64,27 +76,27 @@
         }
 
         function draw(event) {
-    if (!drawing) return;
-    event.preventDefault();
+            if (!drawing) return;
+            event.preventDefault();
 
-    // Get the current canvas dimensions
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+            // Get the current canvas dimensions
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
 
-    // Adjust the drawing coordinates to match the canvas size
-    const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-    const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+            // Adjust the drawing coordinates to match the canvas size
+            const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+            const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
 
-    // Apply scaling to the coordinates based on the current canvas size
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = 'black';
-    ctx.lineTo(x * scaleX, y * scaleY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x * scaleX, y * scaleY);
-}
+            // Apply scaling to the coordinates based on the current canvas size
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+            ctx.lineTo(x * scaleX, y * scaleY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x * scaleX, y * scaleY);
+        }
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -99,26 +111,25 @@
         }
 
         function loadCapturedImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+            const file = event.target.files[0];
+            if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            // Adjust the canvas size based on the image's natural dimensions
-            canvas.width = img.width;
-            canvas.height = img.height;
-            
-            // Draw the image onto the canvas with its natural dimensions
-            ctx.drawImage(img, 0, 0, img.width, img.height);
-            document.getElementById('drawingContainer').classList.remove('hidden');
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Adjust the canvas size based on the image's natural dimensions
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // Draw the image onto the canvas with its natural dimensions
+                    ctx.drawImage(img, 0, 0, img.width, img.height);
+                    document.getElementById('drawingContainer').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
 
         async function uploadToDropbox() {
             const accessToken = ""; // Replace with your token
@@ -152,6 +163,16 @@
                 }
             })
             .catch(error => console.error("Upload Error:", error));
+        }
+
+        function toggleFullScreen() {
+            if (canvas.classList.contains('fullscreen')) {
+                canvas.classList.remove('fullscreen');
+                document.body.style.overflow = 'auto'; // Restore normal scroll
+            } else {
+                canvas.classList.add('fullscreen');
+                document.body.style.overflow = 'hidden'; // Disable scrolling
+            }
         }
     </script>
 </body>
