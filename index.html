@@ -1,83 +1,91 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Drawing Pad</title>
+    <title>Drawing Pad</title>
     <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-        }
         canvas {
-            border: 1px solid black;
-            touch-action: none;
+            border: 2px solid black;
+            cursor: crosshair;
         }
-        #controls {
+        button {
             margin-top: 10px;
+            padding: 10px;
+            font-size: 16px;
+            margin-right: 5px;
         }
     </style>
 </head>
 <body>
-    <h2>Drawing Pad</h2>
-    <canvas id="drawingCanvas" width="300" height="300"></canvas>
-    <div id="controls">
-        <button onclick="clearCanvas()">Clear</button>
-        <button onclick="submitDrawing()">Submit</button>
-    </div>
+    <h2>Drawing Pad - Upload to Dropbox</h2>
+    <canvas id="drawingPad" width="500" height="300"></canvas>
+    <br>
+    <button onclick="clearCanvas()">Clear</button>
+    <button onclick="uploadToDropbox()">Upload</button>
 
     <script>
-        const canvas = document.getElementById("drawingCanvas");
-        const ctx = canvas.getContext("2d");
+        const canvas = document.getElementById('drawingPad');
+        const ctx = canvas.getContext('2d');
         let drawing = false;
 
-        function startDrawing(event) {
-            drawing = true;
-            draw(event);
-        }
-
-        function stopDrawing() {
+        canvas.addEventListener('mousedown', () => drawing = true);
+        canvas.addEventListener('mouseup', () => {
             drawing = false;
             ctx.beginPath();
-        }
+        });
+        canvas.addEventListener('mousemove', draw);
 
         function draw(event) {
             if (!drawing) return;
-            let x = event.clientX || event.touches[0].clientX;
-            let y = event.clientY || event.touches[0].clientY;
-            x -= canvas.offsetLeft;
-            y -= canvas.offsetTop;
-            ctx.lineWidth = 3;
-            ctx.lineCap = "round";
-            ctx.strokeStyle = "black";
-            ctx.lineTo(x, y);
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+
+            ctx.lineTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
         }
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        function submitDrawing() {
-    fetch("http://localhost:5000", {  // URL to your microservice
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Display the response from the microservice (assuming it is a string or an object with a message)
-        alert("Drawing submitted successfully! Response from service: " + data.response);  // Modify this as per your response format
-    })
-    .catch(error => alert("Error submitting drawing: " + error));
-}
+        async function uploadToDropbox() {
+            const accessToken = "sl.u.AFgH_Td1x0b2bHz-wkg-60X4aSHfIY-K0rdXF0rleA9_oQo9j_E7I3LfL8OruHiY8EOAaklxyAJsA9yV38Xbikp0C3nJSpVg2C-e8h2QrKONNghszvzOor6526SNMlDLnAqiErpiArDQ3OR82Y-dt9_ZyEFjoBJuS-JBeN_EGFDGMZLF7b-iv8WVolcwKQeHsHjI6S7X1vMczH5lvcXI90Ntf0rLfV6wTn3vcYjaGMWA2uY08yZCG-r8A8mQViyFWo0L2ATuP9S0YO9sg7e0O5DWqsgR5beN-jH6dXVGsWFtUnp2u15KTxWFcvrgonPhd7YY-yZfFHzNKfhMj5ZltYSbYSky5kSES9AXbz04fX3kih9HUKEPejynNWRP7rLo-9Gh5A9yiTJYiDBOrri6puIURKHiiF5WDNI0LsewcI47Cej_UNH2ccAA7Kbb_xumjIO0n8-8Xo2vA0XIZo6NXpE1B0bRphmJM7fyTNwfasBYaQgI_iyuaRC0MWm4eIlRZGlD8QtQ6vjWkEKlhx3h9ZkdIFUEJgVtTwV_hF1ftRPpz6XulgT27GM1j7pmewaAkVdj0XuZg-mLZloHP74tC-a4G2m2Pj6Dj4UXwRDmeoYxkpIKanHkjIMa7LZNM6sRTW_nP9KTME8dwd5sqHxw6aNXk1mwFWnylET2_qHby2d-lfNjrD23OtFghl3_3xXmdTEsGDA7KOoQM5PBRJ6tdZlLTPXKCjYWLItSHPYVYYqSDR6EkP7Lz4p9nS9kHAxmGKRWegxmyFkzTn3Rc5qmESNcfDgZUvSo-eoL51An9hbI3q73dOH9CjLEuEecj7i-O-d9l0mU8RT2tJGLmDe23sa-7PWW7GPf0opTdjdM4CnY2Eu5YdTGZ0Zj1OavwXq3sQjxbj8F65NkL0ycUbZA9dmkcURpvK0RfZgktpfajiJnSoMSWjllfk_MaN5ej0utQAgKijs-o_oGgUYEth_iAdbnOpO8vWyys_y_ZEiglh5QC5G2CUFKl6zs_PX64mVRfpRogNUfAP3ljU26r_GvbgZwvd1kILd4ct0St5SXJ1XZWDWIJqG9f_e8cR8NCp0KPSjOLFQ5sHTbu24yt4MlsVY8zuaOwqhutpBsojPjz6iF04-4FPsPcaNWYPmNarevsi4r0XvscMGid4LHte2NIQZ6vdMXIpa6xZoGR2682nBgKP-wO-n0pdEgieKeu2PORO_23DBHs13_YnxREFImtGr2Q2nURNMfKLCtcfhfEha07-0ekEJDvO3xHSEi8VdTSrXrf5Oo851PYsS6kSfATcqCB4QL6aWO1tqCR7rNHplLajEOKkeUclrn0gjBORxG_32r1AaFVXNjF2dE7f4Itiswd-KNtviVfzhjg37ei_72T-IFPpXkVHdA3xiJ7cpf4UkaSzi2A6nU-aihioW-ISCf"; // Replace with your token
+            const imageData = canvas.toDataURL('image/png'); // Get image data
+            const blob = await (await fetch(imageData)).blob(); // Convert to blob
 
-        canvas.addEventListener("mousedown", startDrawing);
-        canvas.addEventListener("mouseup", stopDrawing);
-        canvas.addEventListener("mousemove", draw);
-        canvas.addEventListener("touchstart", startDrawing);
-        canvas.addEventListener("touchend", stopDrawing);
-        canvas.addEventListener("touchmove", draw);
+            const fileName = `drawing_${Date.now()}.png`; // Unique file name
+            const dropboxApiUrl = "https://content.dropboxapi.com/2/files/upload";
+
+            const headers = {
+                "Authorization": `Bearer ${accessToken}`,
+                "Dropbox-API-Arg": JSON.stringify({
+                    path: `/${fileName}`,
+                    mode: "add",
+                    autorename: true,
+                    mute: false
+                }),
+                "Content-Type": "application/octet-stream"
+            };
+
+            fetch(dropboxApiUrl, {
+                method: "POST",
+                headers: headers,
+                body: blob
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert("Upload Failed: " + data.error_summary);
+                } else {
+                    alert("Upload Successful: " + data.path_display);
+                }
+            })
+            .catch(error => console.error("Upload Error:", error));
+        }
     </script>
 </body>
 </html>
