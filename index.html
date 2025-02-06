@@ -18,15 +18,9 @@
             background-color: #007777;
         }
 
-        /* Fullscreen canvas styles */
-        #drawingPad.fullscreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 999;
-            border: none;
+        /* Responsive canvas for drawing */
+        #drawingPad {
+            transition: width 0.3s, height 0.3s;
         }
     </style>
 </head>
@@ -37,7 +31,6 @@
         <div class="flex justify-center gap-4 mb-4">
             <button onclick="showDrawingPad()" class="btn">Draw Design</button>
             <button onclick="captureImage()" class="btn">Capture Design</button>
-            <button onclick="toggleFullScreen()" class="btn">Full Screen</button>
         </div>
         
         <div id="drawingContainer" class="hidden">
@@ -67,6 +60,7 @@
 
         function startDrawing(event) {
             drawing = true;
+            resizeCanvas();
             draw(event);
         }
 
@@ -165,14 +159,24 @@
             .catch(error => console.error("Upload Error:", error));
         }
 
-        function toggleFullScreen() {
-            if (canvas.classList.contains('fullscreen')) {
-                canvas.classList.remove('fullscreen');
-                document.body.style.overflow = 'auto'; // Restore normal scroll
-            } else {
-                canvas.classList.add('fullscreen');
-                document.body.style.overflow = 'hidden'; // Disable scrolling
+        function resizeCanvas() {
+            // Resize the canvas to the full screen dimensions while maintaining the aspect ratio
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+
+            // Maintain aspect ratio: 16:9 for example, or you can calculate a different ratio
+            const aspectRatio = 16 / 9;
+            let newWidth = screenWidth;
+            let newHeight = screenWidth / aspectRatio;
+
+            if (newHeight > screenHeight) {
+                newHeight = screenHeight;
+                newWidth = screenHeight * aspectRatio;
             }
+
+            // Apply new canvas size
+            canvas.width = newWidth;
+            canvas.height = newHeight;
         }
     </script>
 </body>
