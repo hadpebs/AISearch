@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drawing Pad</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <style>
         .btn {
             background-color: #009999;
@@ -17,14 +19,25 @@
         .btn:hover {
             background-color: #007777;
         }
+        .crop-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
     </style>
 </head>
-<body class="bg-gray-200 flex justify-center items-center min-h-screen p-4">
+<body class="bg-gray-200 flex justify-center items-center min-h-screen p-4" onload="updateStatus('Scan completed and transferred to phone')">
     <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
         <h2 class="text-2xl font-semibold mb-4 text-gray-800">Drawing Pad</h2>
         
         <div class="flex justify-center gap-4 mb-4">
-            <button onclick="showDrawingPad()" class="btn">Draw Design</button>
+            <button onclick="showDrawingPad(); updateStatus('Drawing is in Progress')" class="btn">Draw Design</button>
             <button onclick="captureImage()" class="btn">Capture Design</button>
         </div>
         
@@ -34,38 +47,82 @@
             </div>
             <div class="flex justify-center gap-4 mt-4">
                 <button onclick="clearCanvas()" class="btn">Clear</button>
-                <button onclick="uploadToDropbox()" class="btn">Upload</button>
+                <button onclick="uploadToMicroservice(); updateStatus('Drawing completed')" class="btn">Upload</button>
             </div>
         </div>
 
         <input type="file" id="captureInput" accept="image/*" capture="environment" class="hidden" onchange="loadCapturedImage(event)">
     </div>
 
+    <div id="cropContainer" class="crop-container">
+        <img id="cropImage" src="" class="max-w-full">
+        <div class="flex justify-center gap-4 mt-4">
+            <button onclick="applyCrop()" class="btn">Crop</button>
+        </div>
+    </div>
+
     <script>
+        let cropper;
         const canvas = document.getElementById('drawingPad');
         const ctx = canvas.getContext('2d');
         let drawing = false;
 
-        // Set the canvas size to 70% of the screen dimensions
-        function setCanvasSize() {
-            const width = window.innerWidth * 0.7;  // 70% of screen width
-            const height = window.innerHeight * 0.7;  // 70% of screen height
-            canvas.width = width;
-            canvas.height = height;
+        function updateStatus(status) {
+            fetch('http://localhost:5000/api/status/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
         }
 
-        // Resize the canvas whenever the window is resized
-        window.addEventListener('resize', setCanvasSize);
+        function showDrawingPad() {
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        }
 
-        // Initialize the canvas size
-        setCanvasSize();
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
 
-        canvas.addEventListener('touchstart', startDrawing);
-        canvas.addEventListener('touchend', stopDrawing);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mousemove', draw);
+        function captureImage() {
+            document.getElementById('captureInput').click();
+        }
+
+        function loadCapturedImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('cropImage').src = e.target.result;
+                document.getElementById('cropContainer').style.display = 'block';
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(document.getElementById('cropImage'), { viewMode: 2 });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyCrop() {
+            const canvasCrop = cropper.getCroppedCanvas();
+            canvas.width = canvasCrop.width;
+            canvas.height = canvasCrop.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasCrop, 0, 0, canvas.width, canvas.height);
+            document.getElementById('cropContainer').style.display = 'none';
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        }
+
+        async function uploadToMicroservice() {
+            const imageData = canvas.toDataURL('image/png');
+            const blob = await (await fetch(imageData)).blob();
+            const formData = new FormData();
+            formData.append('file', blob, `drawing_${Date.now()}.png`);
+            fetch('http://localhost:5000/api/upload/image', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => alert('Upload Successful: ' + data.filePath))
+            .catch(error => console.error('Upload Error:', error));
+        }
 
         function startDrawing(event) {
             drawing = true;
@@ -80,92 +137,24 @@
         function draw(event) {
             if (!drawing) return;
             event.preventDefault();
-
-            // Get the current canvas dimensions
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
-            // Adjust the drawing coordinates to match the canvas size
             const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
             const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
-
-            // Apply scaling to the coordinates based on the current canvas size
             ctx.lineWidth = 6;
             ctx.lineCap = 'round';
             ctx.strokeStyle = 'black';
-            ctx.lineTo(x * scaleX, y * scaleY);
+            ctx.lineTo(x, y);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(x * scaleX, y * scaleY);
+            ctx.moveTo(x, y);
         }
 
-        function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function showDrawingPad() {
-            document.getElementById('drawingContainer').classList.remove('hidden');
-        }
-
-        function captureImage() {
-            document.getElementById('captureInput').click();
-        }
-
-        function loadCapturedImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    // Adjust the canvas size based on the image's natural dimensions
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    
-                    // Draw the image onto the canvas with its natural dimensions
-                    ctx.drawImage(img, 0, 0, img.width, img.height);
-                    document.getElementById('drawingContainer').classList.remove('hidden');
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function uploadToDropbox() {
-            const accessToken = ""; // Replace with your token
-            const imageData = canvas.toDataURL('image/png');
-            const blob = await (await fetch(imageData)).blob();
-            const fileName = `drawing_${Date.now()}.png`;
-            const dropboxApiUrl = "https://content.dropboxapi.com/2/files/upload";
-
-            const headers = {
-                "Authorization": `Bearer ${accessToken}`,
-                "Dropbox-API-Arg": JSON.stringify({
-                    path: `/${fileName}`,
-                    mode: "add",
-                    autorename: true,
-                    mute: false
-                }),
-                "Content-Type": "application/octet-stream"
-            };
-
-            fetch(dropboxApiUrl, {
-                method: "POST",
-                headers: headers,
-                body: blob
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("Upload Failed: " + data.error_summary);
-                } else {
-                    alert("Upload Successful: " + data.path_display);
-                }
-            })
-            .catch(error => console.error("Upload Error:", error));
-        }
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchmove', draw);
     </script>
 </body>
 </html>
