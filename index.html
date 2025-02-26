@@ -101,7 +101,7 @@
         <input type="file" id="captureInput" accept="image/*" capture="environment" class="hidden" onchange="loadCapturedImage(event)">
     </div>
 	
-	<div id="completionMessage" class="hidden text-center text-black-600 text-xl font-bold mt-10">Upload completed. Check NX for search results.</div>
+	<div id="completionMessage" class="hidden text-center text-black-600 text-xl mt-10">Upload completed. Check NX for search results.</div>
 
 
     <div id="cropContainer" class="crop-container">
@@ -153,26 +153,23 @@
         }
 
         function loadCapturedImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        const cropImage = document.getElementById('cropImage');
-        cropImage.src = e.target.result;
-        document.getElementById('cropContainer').style.display = 'block';
-
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(cropImage, { 
-            viewMode: 1, // Ensure crop box is inside image
-            autoCropArea: 1, // Start with full image selected
-            responsive: true
-        });
-    };
-    reader.readAsDataURL(file);
-}
+            const file = event.target.files[0];
+            if (!file) return;
+			
+            document.getElementById('mainContainer').style.display = 'none'; // Hide
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('cropImage').src = e.target.result;
+                document.getElementById('cropContainer').style.display = 'block';
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(document.getElementById('cropImage'), { viewMode: 2 });
+            };
+            reader.readAsDataURL(file);
+        }
 
         function applyCrop() {
+		    document.getElementById('mainContainer').style.display = 'block'; // Hide
+
             const canvasCrop = cropper.getCroppedCanvas();
             canvas.width = canvasCrop.width;
             canvas.height = canvasCrop.height;
@@ -202,7 +199,7 @@
             .then(data => alert('Upload Successful: ' + data.filePath))
             .catch(error => console.error('Upload Error:', error));
 			
-			document.getElementById('mainContainer').remove();
+			document.getElementById('mainContainer').style.display = 'none'; // Hide
             document.getElementById('completionMessage').classList.remove('hidden');
         }
 
