@@ -72,7 +72,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-200 flex flex-col items-center min-h-screen p-4 pt-16">
+<body class="bg-gray-200 flex flex-col items-center min-h-screen p-4 pt-16" onload="updateStatus(1)">
     <div class="blue-bar">
         <div class="flex items-center gap-2">
             <img src="logo.png" alt="Logo" class="h-8"> 
@@ -81,10 +81,10 @@
         <div>SIEMENS</div>
     </div>
     
-    <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
+    <div id="mainContainer" class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
         
         <div class="flex flex-col gap-4 mb-4 w-full">
-            <button onclick="showDrawingPad(); updateStatus('Drawing is in Progress')" class="btn">Draw Design</button>
+            <button onclick="showDrawingPad()" class="btn">Draw Design</button>
             <button onclick="captureImage()" class="btn">Capture Design</button>
         </div>
         
@@ -94,12 +94,15 @@
             </div>
             <div class="flex flex-col gap-4 mt-4 w-full">
                 <button onclick="clearCanvas()" class="btn">Clear</button>
-                <button onclick="uploadToMicroservice(); updateStatus('Drawing completed')" class="btn">Upload</button>
+                <button onclick="uploadToMicroservice(); updateStatus(2)" class="btn">Upload</button>
             </div>
         </div>
 
         <input type="file" id="captureInput" accept="image/*" capture="environment" class="hidden" onchange="loadCapturedImage(event)">
     </div>
+	
+	<div id="completionMessage" class="hidden text-center text-black-600 text-xl font-bold mt-10">Upload completed. Check NX for search results.</div>
+
 
     <div id="cropContainer" class="crop-container">
         <img id="cropImage" src="" class="max-w-full">
@@ -114,11 +117,26 @@
         const ctx = canvas.getContext('2d');
         let drawing = false;
 
-        function updateStatus(status) {
-            fetch('http://localhost:5000/api/status/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
+        function updateStatus(status) 
+        {
+            const sessionId = new URLSearchParams(window.location.search).get('sessionid');
+            if (!sessionId) {
+                alert('Session ID is required');
+                throw new Error('Session ID is required');
+            }           
+
+            fetch(`http://localhost:5190/UpdateSessionState?sessionId=${sessionId}&newState=${status}`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Session state updated successfully');
+                } else {
+                    console.error('Failed to update session state');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
         }
 
@@ -132,6 +150,54 @@
 
         function captureImage() {
             document.getElementById('captureInput').click();
+        }
+
+        function loadCapturedImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('cropImage').src = e.target.result;
+                document.getElementById('cropContainer').style.display = 'block';
+                if (cropper) cropper.destroy();
+                cropper = new Cropper(document.getElementById('cropImage'), { viewMode: 2 });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applyCrop() {
+            const canvasCrop = cropper.getCroppedCanvas();
+            canvas.width = canvasCrop.width;
+            canvas.height = canvasCrop.height;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(canvasCrop, 0, 0, canvas.width, canvas.height);
+            document.getElementById('cropContainer').style.display = 'none';
+            document.getElementById('drawingContainer').classList.remove('hidden');
+        }
+
+        async function uploadToMicroservice() {		    
+			
+            const imageData = canvas.toDataURL('image/png');
+            const blob = await (await fetch(imageData)).blob();
+            const sessionId = new URLSearchParams(window.location.search).get('sessionid');
+            <!-- if (!sessionId) { -->
+                <!-- alert('Session ID is required'); -->
+                <!-- throw new Error('Session ID is required'); -->
+            <!-- } -->
+            
+            const formData = new FormData();
+            formData.append('file', blob, `drawing_${Date.now()}.png`);
+            formData.append('sessionId', sessionId);
+            fetch('http://localhost:5190/UploadUserInput', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => alert('Upload Successful: ' + data.filePath))
+            .catch(error => console.error('Upload Error:', error));
+			
+			document.getElementById('mainContainer').remove();
+            document.getElementById('completionMessage').classList.remove('hidden');
         }
 
         function startDrawing(event) {
