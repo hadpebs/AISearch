@@ -153,18 +153,24 @@
         }
 
         function loadCapturedImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('cropImage').src = e.target.result;
-                document.getElementById('cropContainer').style.display = 'block';
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(document.getElementById('cropImage'), { viewMode: 2 });
-            };
-            reader.readAsDataURL(file);
-        }
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const cropImage = document.getElementById('cropImage');
+        cropImage.src = e.target.result;
+        document.getElementById('cropContainer').style.display = 'block';
+
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, { 
+            viewMode: 1, // Ensure crop box is inside image
+            autoCropArea: 1, // Start with full image selected
+            responsive: true
+        });
+    };
+    reader.readAsDataURL(file);
+}
 
         function applyCrop() {
             const canvasCrop = cropper.getCroppedCanvas();
