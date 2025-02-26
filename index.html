@@ -8,8 +8,42 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <style>
+	body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        .blue-bar {
+            background-color: #007298;
+            height: 50px;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .blue-bar-left {
+            background-color: #007298;
+            width: 50px;
+            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+		
         .btn {
-            background-color: #009999;
+            background-color: #007298;
             color: white;
             padding: 10px 20px;
             border-radius: 8px;
@@ -17,7 +51,7 @@
             transition: background 0.3s;
         }
         .btn:hover {
-            background-color: #007777;
+            background-color: #007298;
         }
         .crop-container {
             display: none;
@@ -33,6 +67,12 @@
     </style>
 </head>
 <body class="bg-gray-200 flex justify-center items-center min-h-screen p-4" onload="updateStatus('Scan completed and transferred to phone')">
+<div class="blue-bar-left"></div>
+    <div class="blue-bar">
+        <div style="margin-left: 0px;">AI SEARCH</div>
+        <div style="margin-right: 50px;">SIEMENS</div>
+    </div>
+	
     <div class="bg-white shadow-xl rounded-xl p-6 w-full max-w-lg text-center">
         <h2 class="text-2xl font-semibold mb-4 text-gray-800">Drawing Pad</h2>
         
@@ -133,21 +173,27 @@
             drawing = false;
             ctx.beginPath();
         }
+		
+
 
         function draw(event) {
-            if (!drawing) return;
-            event.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const x = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-            const y = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
-            ctx.lineWidth = 6;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = 'black';
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
+    if (!drawing) return;
+    event.preventDefault();
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width; // Fix scaling issue
+    const scaleY = canvas.height / rect.height; // Fix scaling issue
+
+    const x = (event.touches ? event.touches[0].clientX : event.clientX - rect.left) * scaleX;
+    const y = (event.touches ? event.touches[0].clientY : event.clientY - rect.top) * scaleY;
+
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'black';
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+}
 
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mouseup', stopDrawing);
