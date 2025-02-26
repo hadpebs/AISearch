@@ -88,7 +88,7 @@
         
         <div id="drawingContainer" class="hidden w-full">
             <div class="border-2 border-gray-700 rounded-lg overflow-hidden">
-                <canvas id="drawingPad" class="w-full" style="aspect-ratio: 1.5;"></canvas>
+                <canvas id="drawingPad" class="w-full" style="aspect-ratio: 1.5; touch-action: none;"></canvas>
             </div>
             <div class="flex flex-col gap-4 mt-4 w-full">
                 <button onclick="clearCanvas()" class="btn">Clear</button>
@@ -132,30 +132,6 @@
             document.getElementById('captureInput').click();
         }
 
-        function loadCapturedImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('cropImage').src = e.target.result;
-                document.getElementById('cropContainer').style.display = 'block';
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(document.getElementById('cropImage'), { viewMode: 2 });
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function applyCrop() {
-            const canvasCrop = cropper.getCroppedCanvas();
-            canvas.width = canvasCrop.width;
-            canvas.height = canvasCrop.height;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(canvasCrop, 0, 0, canvas.width, canvas.height);
-            document.getElementById('cropContainer').style.display = 'none';
-            document.getElementById('drawingContainer').classList.remove('hidden');
-        }
-
         function startDrawing(event) {
             drawing = true;
             draw(event);
@@ -165,7 +141,7 @@
             drawing = false;
             ctx.beginPath();
         }
-        
+
         function draw(event) {
             if (!drawing) return;
             event.preventDefault();
@@ -174,14 +150,17 @@
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             
-            const x = (event.touches ? event.touches[0].clientX : event.clientX - rect.left) * scaleX;
-            const y = (event.touches ? event.touches[0].clientY : event.clientY - rect.top) * scaleY;
+            const touch = event.touches ? event.touches[0] : event;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
 
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
             ctx.strokeStyle = 'black';
             ctx.lineTo(x, y);
             ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
         }
 
         canvas.addEventListener('mousedown', startDrawing);
@@ -189,7 +168,7 @@
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('touchstart', startDrawing);
         canvas.addEventListener('touchend', stopDrawing);
-        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchmove', draw, { passive: false });
     </script>
 </body>
 </html>
